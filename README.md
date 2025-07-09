@@ -20,15 +20,15 @@ VariTensor provides a beautiful, natural interface for full-featured, runtime-dy
 
 ### Direct Download
 
-VariTensor is a **header-only** library, so to install it directly, you can download the project's source code and add "VariTensor/include" to your includes.
+VariTensor is a **header-only** library, so to install it directly, you can download the project's source code and add "varitensor/include" to your includes.
 
 ## :arrow_forward: Usage
 
 ### Basic Functionality
 
 ```c++
-#include <numeric>
 #include <varitensor/Tensor.h>
+#include <numeric>
 
 using namespace varitensor;
 
@@ -48,7 +48,7 @@ int main() {
     std::ranges::iota(U, 0);
 
     // VariTensor uses operator[] to index tensors
-    // We could omit the indices as they are the same that we declared with, but they add to readability
+    // Could omit the indices here as they are the same we declared with, but they add to readability
     Tensor V = T[mu] * U[mu, nu];
 }
 ```
@@ -65,29 +65,30 @@ int main() {
 ### Pretty Printing
 
 ```c++
-#include <numeric>
 #include <varitensor/Tensor.h>
 #include <varitensor/pretty_print.h>
+#include <numeric>
 
 using namespace varitensor;
 
 int main() {
+    // Named indices of the same size always compare equal and keep their names when printing
     Index i{"i", LATIN}, j{"j", LATIN}, k{"k", LATIN};
 
     // VariTensor supports a wide range of punctuation, e.g. '
     Tensor T_primed{"T'", {
-            {i, CONTRAVARIANT},
-            {j, CONTRAVARIANT},
-            {k, COVARIANT}
-        }
+        {i, CONTRAVARIANT},
+        {j, CONTRAVARIANT},
+        {k, COVARIANT}
+    }
     };
     // We could also use T.set_name() after initialisation; this is useful for naming expressions
 
-    std::ranges::iota(T, 0);
-    std::cout << T;
+    std::ranges::iota(T_primed, 0);
+    std::cout << T_primed;
 }
 ```
-
+Result:
 ```
  _____ ,-, 
 |_   _||/  i j   
@@ -96,13 +97,13 @@ int main() {
   |_|          k 
 Rank 3 Tensor
 
- /                                                        \
-|                                       18.00 19.00 20.00  |
-|                     9.00 10.00 11.00  21.00 22.00 23.00  |
-|  0.00  1.00  2.00  12.00 13.00 14.00  24.00 25.00 26.00  |
-|  3.00  4.00  5.00  15.00 16.00 17.00                     |
-|  6.00  7.00  8.00                                        |
- \                                                        /
+ /                                               \
+|                                 18.0 19.0 20.0  |
+|                  9.0 10.0 11.0  21.0 22.0 23.0  |
+|  0.0  1.0  2.0  12.0 13.0 14.0  24.0 25.0 26.0  |
+|  3.0  4.0  5.0  15.0 16.0 17.0                  |
+|  6.0  7.0  8.0                                  |
+ \                                               /
 
 ```
 
@@ -117,8 +118,8 @@ Rank 3 Tensor
 <h3> Flexible Indexing </h3>
 
 ```c++
-#include <numeric>
 #include <varitensor/Tensor.h>
+#include <numeric>
 
 using namespace varitensor;
 
@@ -144,13 +145,13 @@ int main() {
 
     // Finally, contract T to a scalar
     Tensor Y = T[mu, mu];
-    double z = Y; // Scalar tensors are convertable to double
+    double z{Y}; // Scalar tensors are convertable to double
 }
 ```
 
 > :information_source: **Note**
 >
-> The indexing operator, [ ], returns a View object that can be used to iterate over tensors or construct new ones.
+> The indexing operator, [ ], returns a View object that can be used to iterate over tensors or initialise new ones.
 
 ### Metric Tensor
 
@@ -159,11 +160,13 @@ int main() {
 
 using namespace varitensor;
 
-// You can pass a user-defined function to initialise our metric
-MetricFunction my_unusual_metric = [](int i, int j) -> double {
-    if (i==j) return 3;
-    return i - j;
-}
+// A metric tensor can be created with a user-defined function
+// The signature must be double(int, int) where the ints give the position in the metric
+// varitensor::MetricFunction is provided as a shorthand
+MetricFunction my_minkowski_metric = [](int i, int j) -> double {
+    if (i==j) return i == 3 ? -1 : 1;
+    return 0;
+};
 
 int main() {
     Index i{"i", LATIN}, j{"j", LATIN}, k{"k", LATIN};
@@ -173,11 +176,11 @@ int main() {
             {i, CONTRAVARIANT},
             {k, CONTRAVARIANT}
         },
-        my_unusual_metric // The default is varitensor::EUCLIDEAN_METRIC
+        my_minkowski_metric // The default is varitensor::EUCLIDEAN_METRIC
     );
 
-    // Note that unlike normal multiplication, k will positionally replace i in U
-    Tensor U = T[i, j] * g[i, k];
+    // Since g is a metric tensor, k will positionally replace i in U
+    Tensor U = T[i, j] * g[i, k]; // gives U[k, j] with contravariant k
 }
 ```
 ### Other Features
@@ -224,7 +227,5 @@ VariTensor generally performs towards the slower end of Tensor libraries. At thi
 VariTensor is licenced under the [Mozilla Public Licence v2.0](https://www.mozilla.org/en-US/MPL/2.0/).
 
 <br/>
-<span style="font-size:10px; color:#666666; text-align:right">
-Copyright &copy; Ben Stokes, 2025
-</span>
-<br/>
+
+*Copyright &copy; Ben Stokes, 2025*
