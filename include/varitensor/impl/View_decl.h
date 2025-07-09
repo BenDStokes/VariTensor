@@ -42,14 +42,15 @@ public:
         for (auto& dimension: dimensions) counts[dimension.index.id()] += 1;
 
         for (auto& dimension: dimensions) {
-            deny(counts[dimension.index.id()] > 2,
-                       "Indices in contraction expressions cannot appear more than twice!");
-            if (counts[dimension.index.id()] == 2) {
+            soft_deny(counts[dimension.index.id()] > 2,
+                      "Indices in contraction expressions cannot appear more than twice!");
+
+            if (counts[dimension.index.id()] == 2) { // repeated index
                 m_repeated.push_back(dimension);
                 m_repeated_positions.push_back(0);
                 counts[dimension.index.id()] = -1;
             }
-            else if (counts[dimension.index.id()] == 1) {
+            else if (counts[dimension.index.id()] == 1) { // non-repeated index
                 m_dimensions.push_back(dimension);
                 m_size *= dimension.size();
                 m_positions.push_back(0);
@@ -90,7 +91,8 @@ public:
     }
 
     double& operator*() const requires(!is_const) {
-        strict_deny(is_contracted(), "Cannot dereference non-const contracted iterator! Use std::as_const or cbegin/cend for const iteration.");
+        deny(is_contracted(),
+             "Cannot dereference non-const contracted iterator! Use std::as_const or cbegin/cend for const iteration.");
         return *m_data_ptr;
     }
 
@@ -181,7 +183,6 @@ public:
     View(const Tensor& target, double* data_ptr, impl::Dimensions dimensions); // an offset view
 
     void operator=(const Tensor& other) &&; // NOLINT - allows T[i, 2] = U
-//    void operator=(const View&& other) &&; // NOLINT - allows T[i, 2] = U[i, 2]
 
     bool operator==(const View& other) const;
 

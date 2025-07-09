@@ -580,7 +580,7 @@ inline void write_header(
 
 inline void write_subtitle(std::ostream& stream, const Tensor& tensor, const TensorClass print_type) {
     /** writes a small note of what "sort" of tensor we have
-     * e.g. "Rank 5 Tensor", "Vector Tensor", etc.
+     * e.g. "Rank 5 Tensor", "Column Vector", etc.
      */
     if (print_type == METRIC_TENSOR) stream << "Metric Tensor\n\n";
     else if (print_type == LEVI_CIVITA_SYMBOL) stream << "Levi-Civita Symbol\n\n";
@@ -675,7 +675,7 @@ inline void output_grid(
 }
 
 inline void output_234(const Tensor& tensor, const Dimensions& dimensions, std::ostream& stream) {
-    // for tensors of rank 2, 3, or 4
+    // for tensors of rank 2, 3, or 4 (by far the most complicated case)
 
     const int i_size = dimensions[0].index.size();
     const int j_size = dimensions[1].index.size();
@@ -758,7 +758,7 @@ inline void write_data(std::ostream& stream, const Tensor& tensor) {
 }
 
 inline std::ostream& pretty_print(std::ostream& ostream, const Tensor& tensor) {
-    // display the tensor including name and index information in pretty format
+    // display the tensor in detailed geometric format, including name and index information
     impl::write_header(ostream, tensor.m_dimensions, tensor.name(), tensor.m_tensor_class);
     impl::write_subtitle(ostream, tensor, tensor.m_tensor_class);
     write_data(ostream, tensor);

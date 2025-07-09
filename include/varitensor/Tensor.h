@@ -53,7 +53,7 @@ public:
     {}
 
     Tensor(std::string name, const std::initializer_list<VarianceQualifiedIndex> vq_indices):
-        m_size{1}, m_name{std::move(name)}
+        m_name{std::move(name)}
     {
         from_container(vq_indices);
     }
@@ -63,7 +63,7 @@ public:
     {}
 
     Tensor(std::string name, const std::initializer_list<Index> indices):
-        m_size{1}, m_name{std::move(name)}
+        m_name{std::move(name)}
     {
         std::vector<VarianceQualifiedIndex> vq_indices;
         for (const auto& index: indices) vq_indices.emplace_back(index, COVARIANT);
@@ -75,7 +75,7 @@ public:
     {}
 
     Tensor(std::string name, const std::vector<VarianceQualifiedIndex>& vq_indices):
-        m_size{1}, m_name{std::move(name)}
+        m_name{std::move(name)}
     {
         from_container(vq_indices);
     }
@@ -85,7 +85,7 @@ public:
     {}
 
     Tensor(std::string name, const std::vector<Index>& indices):
-        m_size{1}, m_name{std::move(name)}
+        m_name{std::move(name)}
     {
         std::vector<VarianceQualifiedIndex> vq_indices;
         for (const auto& index: indices) vq_indices.emplace_back(index, COVARIANT);
@@ -97,7 +97,7 @@ public:
     {}
 
     Tensor(std::string name, const double value):
-        m_size{1}, m_name{std::move(name)}
+        m_name{std::move(name)}
     {
         m_data = new double[1]; // still use array-new so that delete[] works in the dtor
         *m_data = value;
@@ -109,7 +109,7 @@ public:
 
     template<impl::Expression_c E>
     Tensor(E&& expression): // NOLINT - we want implicit conversion
-        m_size{1}, m_name{impl::TENSOR_DEFAULT_NAME}
+        m_name{impl::TENSOR_DEFAULT_NAME}
     {
         auto iterator = expression.begin();
 
@@ -181,7 +181,7 @@ public:
     // =================================================================================================
 
     explicit operator double() const {
-        impl::deny(m_size > 1, "Attempt to convert non-scalar tensor to double");
+        impl::soft_deny(m_size > 1, "Attempt to convert non-scalar tensor to double");
         return *m_data;
     }
 
@@ -203,9 +203,9 @@ public:
 
         size_t n = 0;
         for(const auto index : {indices...}) {
-            impl::deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
-            impl::deny(index < 0, "Indices cannot be less than zero!");
-            impl::deny(index >= m_dimensions[n].index.size(), "Index size mismatch");
+            impl::soft_deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
+            impl::soft_deny(index < 0, "Indices cannot be less than zero!");
+            impl::soft_deny(index >= m_dimensions[n].index.size(), "Index size mismatch");
 
             data += m_dimensions[n].width * index;
             ++n;
@@ -217,8 +217,8 @@ public:
     template<impl::Indexable_c... Indices>
     requires (!impl::AllInt_c<Indices...>)
     [[nodiscard]] View operator[](Indices... indices) const {
-        impl::deny(sizeof...(indices) != m_dimensions.size(),
-                   "Indexing dimension mismatch!");
+        impl::soft_deny(sizeof...(indices) != m_dimensions.size(),
+                        "Indexing dimension mismatch!");
 
         size_t n{0};
         size_t offset{0};
@@ -229,14 +229,14 @@ public:
     }
 
     View operator[](Indexables indices) const {
-        impl::deny(indices.size() != m_dimensions.size(), "Indexing dimension mismatch!");
+        impl::soft_deny(indices.size() != m_dimensions.size(), "Indexing dimension mismatch!");
 
         size_t offset{0};
         impl::Dimensions passed_indices;
         for (size_t i = 0; i < indices.size(); ++i) {
             if (std::holds_alternative<Index>(indices[i])) {
-                impl::deny(std::get<Index>(indices[i]).size() > m_dimensions[i].index.size(),
-                           "Index size mismatch");
+                impl::soft_deny(std::get<Index>(indices[i]).size() > m_dimensions[i].index.size(),
+                                "Index size mismatch");
                 passed_indices.emplace_back(
                     std::get<Index>(indices[i]),
                     m_dimensions[i].variance,
@@ -244,8 +244,8 @@ public:
                 );
             }
             else {
-                impl::deny(std::get<int>(indices[i]) >= m_dimensions[i].index.size(),
-                           "Index size mismatch");
+                impl::soft_deny(std::get<int>(indices[i]) >= m_dimensions[i].index.size(),
+                                "Index size mismatch");
                 offset += std::get<int>(indices[i]) * m_dimensions[i].width;
             }
         }
@@ -254,13 +254,13 @@ public:
     }
 
     double& operator[](const std::vector<int>& indices) const {
-        impl::deny(indices.size() > m_dimensions.size(), "Indexing dimension mismatch!");
+        impl::soft_deny(indices.size() > m_dimensions.size(), "Indexing dimension mismatch!");
         auto data = m_data;
 
         int n = 0;
         for(const auto index : indices) {
-            impl::deny(index < 0, "Indices cannot be less than zero!");
-            impl::deny(index >= m_dimensions[n].index.size(), "Index size mismatch!");
+            impl::soft_deny(index < 0, "Indices cannot be less than zero!");
+            impl::soft_deny(index >= m_dimensions[n].index.size(), "Index size mismatch!");
 
             data += m_dimensions[n].width * index;
             ++n;
@@ -302,7 +302,7 @@ public:
     }
 
     [[nodiscard]] Variance variance(const int index) const {
-        impl::deny(static_cast<size_t> (index) >= m_dimensions.size(), "Index out of bounds!");
+        impl::soft_deny(static_cast<size_t> (index) >= m_dimensions.size(), "Index out of bounds!");
         return m_dimensions[index].variance;
     }
 
@@ -320,7 +320,7 @@ public:
     }
 
     [[nodiscard]] const Index& indices(const int index) const {
-        impl::deny(static_cast<size_t>(index) >= m_dimensions.size(), "Index out of bounds!");
+        impl::soft_deny(static_cast<size_t>(index) >= m_dimensions.size(), "Index out of bounds!");
         return m_dimensions[index].index;
     }
 
@@ -354,7 +354,7 @@ public:
     }
 
     Tensor& transpose(const Index& index1, const Index& index2) {
-        impl::deny(index1.size() != index2.size(), "Cannot transpose indices of different lengths");
+        impl::soft_deny(index1.size() != index2.size(), "Cannot transpose indices of different lengths");
 
         int pos1{-1}, pos2{-1};
         for (size_t i=0; i<m_dimensions.size(); ++i) {
@@ -362,7 +362,7 @@ public:
             else if (m_dimensions[i].index == index2) pos2 = static_cast<int> (i);
         }
 
-        impl::deny(pos1 == -1 || pos2 == -1, "No such index to transpose");
+        impl::soft_deny(pos1 == -1 || pos2 == -1, "No such index to transpose");
 
         const auto temp_dim = m_dimensions[pos1];
         m_dimensions[pos1] = m_dimensions[pos2];
@@ -374,7 +374,7 @@ public:
     Tensor& relabel(const Index& first, const Index& second) {
         for (auto& dimension: m_dimensions) {
             if (dimension.index == first) {
-                impl::deny(dimension.size() != second.size(), "Cannot relabel to an index with different size!");
+                impl::soft_deny(dimension.size() != second.size(), "Cannot relabel to an index with different size!");
                 dimension.index = second;
                 return *this;
             }
@@ -540,7 +540,7 @@ public:
     }
 
     friend double& operator*=(double& first, const Tensor& second) {
-        impl::deny(second.m_size > 1, "Cannot multiply-assign a non-scalar tensor to a double!");
+        impl::soft_deny(second.m_size > 1, "Cannot multiply-assign a non-scalar tensor to a double!");
         first *= static_cast<double>(second);
         return first;
     }
@@ -563,7 +563,7 @@ public:
 // ---------------------------------------------------------------------------------------- division
 
     friend impl::SummedOp operator/(const Tensor& first, const Tensor& second) {
-        impl::deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
+        impl::soft_deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
         return {first, *second.m_data, impl::DIV};
     }
 
@@ -572,19 +572,19 @@ public:
     }
 
     friend impl::SummedOp operator/(const double& first, const Tensor& second) {
-        impl::deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
+        impl::soft_deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
         return {first, second, impl::DIV};
     }
 
 // ----------------------------------------------------------------------------- division assignment
 
     friend Tensor& operator/=(Tensor& first, const Tensor& second) {
-        impl::deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
+        impl::soft_deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
         return first /= *second.m_data;
     }
 
     friend double& operator/=(double& first, const Tensor& second) {
-        impl::deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
+        impl::soft_deny(second.m_size != 1, "Cannot divide by non-scalar tensor!");
         return first;
     }
 
@@ -599,7 +599,7 @@ public:
 
     template<impl::Expression_c E>
     friend Tensor& operator/=(Tensor& first, E&& expression) {
-        impl::deny(!expression.is_scalar(), "Cannot divide by non-scalar tensor!");
+        impl::soft_deny(!expression.is_scalar(), "Cannot divide by non-scalar tensor!");
         return first += expression.deref();
     }
 
@@ -652,13 +652,13 @@ private:
 
     template<typename T>
     static Tensor make_levi_civita_symbol(const T& indices) {
-        impl::deny(indices.size() <= 1,
-                   "Levi-Civita Symbol must have at least 2 indices!");
+        impl::soft_deny(indices.size() <= 1,
+                        "Levi-Civita Symbol must have at least 2 indices!");
 
         const auto expected_size = indices.begin()->index.size();
         for (const auto& [index, _]: indices) {
-            impl::deny(index.size() != expected_size,
-                       "Indices to Levi-Civita Symbol must all the the same size!");
+            impl::soft_deny(index.size() != expected_size,
+                            "Indices to Levi-Civita Symbol must all the the same size!");
         }
 
         auto epsilon = Tensor{"Epsilon",  indices};
@@ -678,7 +678,7 @@ private:
                     }
                 }
             }
-            if ((inversions / 2) % 2) epsilon[permutation] = -1;
+            if (inversions / 2 % 2) epsilon[permutation] = -1;
             else epsilon[permutation] = 1;
         }
         while (std::ranges::next_permutation(permutation).found);
@@ -688,13 +688,13 @@ private:
 
     template<typename T>
     static Tensor make_kronecker_delta(const T& indices) {
-        impl::deny(indices.size() <= 1,
-                   "Kronecker Delta must have at least 2 indices!");
+        impl::soft_deny(indices.size() <= 1,
+                        "Kronecker Delta must have at least 2 indices!");
 
         const auto expected_size = indices.begin()->index.size();
         for (const auto& [index, _]: indices) {
-            impl::deny(index.size() != expected_size,
-                       "Indices to Kronecker Delta must all the the same size!");
+            impl::soft_deny(index.size() != expected_size,
+                            "Indices to Kronecker Delta must all the the same size!");
         }
 
         auto delta = Tensor{"delta", indices};
@@ -719,7 +719,7 @@ private:
 // =================================================================================================
 
     impl::Dimensions m_dimensions;
-    size_t m_size;
+    size_t m_size{1};
     double* m_data{nullptr};
     std::string m_name;
     impl::TensorClass m_tensor_class{impl::TENSOR};
@@ -756,9 +756,8 @@ private:
     void from_container(const T& variance_qualified_indices) {
         for(auto& vqi: variance_qualified_indices) {
             for (auto& dimension: m_dimensions) {
-                impl::deny(dimension.index.id() == vqi.index.id(),
-                     "Cannot initialize tensor with repeated indices"
-                );
+                impl::soft_deny(dimension.index.id() == vqi.index.id(),
+                                "Cannot initialize tensor with repeated indices");
             }
             m_dimensions.emplace_back(vqi.index, vqi.variance, m_size);
             m_size *= vqi.index.size();
@@ -819,8 +818,8 @@ private:
         const Index& index,
         Indices... indices
     ) const {
-        impl::deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
-        impl::deny(index.size() > m_dimensions[n].index.size(), "Index size mismatch");
+        impl::soft_deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
+        impl::soft_deny(index.size() > m_dimensions[n].index.size(), "Index size mismatch");
 
         passed_indices.emplace_back(index, m_dimensions[n].variance, m_dimensions[n].width);
         construct_passed_indices(++n, offset, passed_indices, indices...);
@@ -834,8 +833,8 @@ private:
         const Interval& index,
         Indices... indices
     ) const {
-        impl::deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
-        impl::deny(index.last >= m_dimensions[n].index.size(), "Index size mismatch");
+        impl::soft_deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
+        impl::soft_deny(index.last >= m_dimensions[n].index.size(), "Index size mismatch");
 
         offset += m_dimensions[n].width * index.first;
         passed_indices.emplace_back(index, m_dimensions[n].variance, m_dimensions[n].width);
@@ -850,8 +849,8 @@ private:
         const int index,
         Indices... indices
     ) const {
-        impl::deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
-        impl::deny(index+1 > m_dimensions[n].index.size(), "Index size mismatch");
+        impl::soft_deny(n >= m_dimensions.size(), "Indexing dimension mismatch!");
+        impl::soft_deny(index+1 > m_dimensions[n].index.size(), "Index size mismatch");
 
         offset += index * m_dimensions[n].width;
         construct_passed_indices(++n, offset, passed_indices, indices...);

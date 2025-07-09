@@ -30,20 +30,26 @@ inline LinkedOpIterator::LinkedOpIterator(
     if (sub_expressions.empty() || m_end) return;
 
     for (auto& expression: sub_expressions) m_sub_iterators.emplace_back(std::visit(VBegin, expression));
+
+    // the size and indices of every sub-expression should be the same, so just take them from the first iterator
     m_dimensions = std::visit(GetDimensions, m_sub_iterators[0]);
     m_size = std::visit(GetSize, m_sub_iterators[0]);
 
     if constexpr (VARITENSOR_VALIDATION_ON) {
-        for (size_t i = 1; i < m_sub_iterators.size(); ++i) { // start at 1 as we've already done 0
-            deny(std::visit(GetSize, m_sub_iterators[i]) != m_size,
-                 "Attempt to add or subtract tensors of different sizes!");
+        for (size_t i = 1; i < m_sub_iterators.size(); ++i) { // start at 1 as we just did the first iterator
+            soft_deny(std::visit(GetSize, m_sub_iterators[i]) != m_size,
+                      "Cannot add or subtract tensors of different sizes!");
+
             for (auto& dimension1: std::visit(GetDimensions, m_sub_iterators[i])) {
                 for (auto& dimension2: m_dimensions) {
                     if (dimension1.index == dimension2.index) {
+                        soft_deny(dimension1.variance != dimension2.variance,
+                                  "Cannot add or subtract tensors with indices of disagreeing variance!");
                         goto INDEX_MATCH_FOUND; // for-else is a valid use of goto
                     }
                 }
-                throw std::logic_error("Attempt to add or subtract tensors with non-matching indices!");
+
+                throw std::logic_error("Cannot add or subtract tensors with non-matching indices!");
                 INDEX_MATCH_FOUND:;
             }
         }
@@ -105,6 +111,10 @@ inline bool LinkedOpIterator::is_metric() {
     return false;
 }
 
+// =================================================================================================
+//                                                                              LinkedOp iteration |
+// =================================================================================================
+
 inline LinkedOpIterator LinkedOp::begin() const {
     return iterator{m_modifier, m_sub_expressions, &m_signs};
 }
@@ -118,7 +128,7 @@ inline ExpressionIterator LinkedOp::vbegin() const {
 }
 
 // =================================================================================================
-//                                                                                         helpers |
+//                                                                                LinkedOp helpers |
 // =================================================================================================
 
 inline void LinkedOp::add_element(const Tensor& tensor, const Operation sign) {

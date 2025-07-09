@@ -19,12 +19,12 @@ inline Tensor metric_tensor(
     const std::initializer_list<VarianceQualifiedIndex> indices,
     const MetricFunction& metric_function = EUCLIDEAN_METRIC
 ) {
-    impl::deny(indices.size() != 2,
-               "Metric tensor must have exactly 2 indices!");
-    impl::deny(indices.begin()->index == (indices.begin() + 1)->index,
-               "Metric tensor indices must be different!");
-    impl::deny(indices.begin()->variance != (indices.begin() + 1)->variance,
-               "Metric tensor indices must have the same variance!");
+    impl::soft_deny(indices.size() != 2,
+                    "Metric tensor must have exactly 2 indices!");
+    impl::soft_deny(indices.begin()->index == (indices.begin() + 1)->index,
+                    "Metric tensor indices must be different!");
+    impl::soft_deny(indices.begin()->variance != (indices.begin() + 1)->variance,
+                    "Metric tensor indices must have the same variance!");
 
     Tensor metric{"g", indices};
     metric.set_tensor_class(impl::METRIC_TENSOR);

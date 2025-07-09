@@ -40,7 +40,7 @@ public:
         m_size{size},
         m_id{s_next_id++}
     {
-        impl::deny(m_size < 2, "Cannot initialize unnamed index with size < 2!");
+        impl::soft_deny(m_size < 2, "Cannot initialize unnamed index with size < 2!");
     }
 
     explicit Index(std::string  name, const int size):
@@ -48,7 +48,7 @@ public:
         m_id{s_next_id++},
         m_name{std::move(name)}
     {
-        impl::deny(m_size < 2, "Cannot initialize index with size < 2!");
+        impl::soft_deny(m_size < 2, "Cannot initialize index with size < 2!");
     }
 
     Index(const Interval& interval): // NOLINT - we want implicit conversion
@@ -85,6 +85,10 @@ public:
         m_name = name;
     }
 
+// =================================================================================================
+//                                                                               interval creation |
+// =================================================================================================
+
     [[nodiscard]] Interval operator()(const int first, const int last=impl::MAX_INTERVAL) const {
         return interval(first, last);
     }
@@ -92,9 +96,9 @@ public:
     [[nodiscard]] Interval interval(const int first, int last=impl::MAX_INTERVAL) const {
         if (last == impl::MAX_INTERVAL) last = m_size - 1;
 
-        impl::deny(first < 0, "Interval cannot have negative start!");
-        impl::deny(first >= last, "Interval must end after it starts!");
-        impl::deny(last >= m_size, "Interval cannot overflow index size!");
+        impl::soft_deny(first < 0, "Interval cannot have negative start!");
+        impl::soft_deny(first >= last, "Interval must end after it starts!");
+        impl::soft_deny(last >= m_size, "Interval cannot overflow index size!");
         return {*this, first, last};
     }
 

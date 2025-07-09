@@ -14,15 +14,15 @@
 
 namespace varitensor::impl {
 
-inline void strict_deny(const bool condition, const std::string& message) {
+inline void deny(const bool condition, const std::string& message) {
     if (condition) {
         throw std::logic_error(message);
     }
 }
 
-inline void deny(const bool condition, const std::string& message) {
+inline void soft_deny(const bool condition, const std::string& message) {
     if constexpr (VARITENSOR_VALIDATION_ON) {
-        strict_deny(condition, message);
+        deny(condition, message);
     }
 }
 

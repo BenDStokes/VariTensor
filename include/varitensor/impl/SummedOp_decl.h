@@ -64,10 +64,10 @@ private:
 
 class SummedOp {
 /**
- * Represents an operation between tensor expressions where repeated indices
- * are summed over (einstein summation convention). Supports multiplication
- * and division (though division by non-scalar tensor is not allowed). Will
- * also correctly swap in indices when summing over metric tensors.
+ * Represents an operation between tensor expressions where repeated indices are summed over
+ * (einstein summation convention). Supports multiplication and division (though division by
+ * non-scalar tensor is not allowed). Will also correctly swap in indices when summing over
+ * metric tensors.
  */
 public:
     template <ExpressionOperand_c T, ExpressionOperand_c U>

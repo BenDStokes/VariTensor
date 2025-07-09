@@ -46,10 +46,10 @@ inline View::View(const Tensor& target):
     m_dimensions{m_target.m_dimensions}
 {
     for (size_t i = 0; i < m_dimensions.size(); ++i) {
-        impl::deny(m_dimensions[i].size() > m_target.m_dimensions[i].index.size(),
-                   "Index size mismatch!");
-        impl::deny(m_dimensions[i].variance != m_target.m_dimensions[i].variance,
-                   "Index variance mismatch!");
+        impl::soft_deny(m_dimensions[i].size() > m_target.m_dimensions[i].index.size(),
+                        "Index size mismatch!");
+        impl::soft_deny(m_dimensions[i].variance != m_target.m_dimensions[i].variance,
+                        "Index variance mismatch!");
     }
 }
 
@@ -66,18 +66,18 @@ inline View::View(const Tensor& target, double* data_ptr, impl::Dimensions dimen
 void View::operator=(const Tensor& other) && { // NOLINT - allows T[i, 2] = U
     const View other_view{other};
 
-    impl::deny(m_dimensions.size() != other.m_dimensions.size(),
-               "Cannot assign to View with different dimensions!");
+    impl::soft_deny(m_dimensions.size() != other.m_dimensions.size(),
+                    "Cannot assign to View with different dimensions!");
     for (size_t i = 0; i < m_dimensions.size(); ++i) {
-        impl::deny(m_dimensions[i].index.size() != other.m_dimensions[i].index.size(),
-                   "Index size mismatch when assigning view!");
-        impl::deny(m_dimensions[i].variance != other.m_dimensions[i].variance,
-                   "Variance mismatch when assigning view!");
+        impl::soft_deny(m_dimensions[i].index.size() != other.m_dimensions[i].index.size(),
+                        "Index size mismatch when assigning view!");
+        impl::soft_deny(m_dimensions[i].variance != other.m_dimensions[i].variance,
+                        "Variance mismatch when assigning view!");
     }
 
     auto iter1 = begin();
     auto iter2 = other_view.begin();
-    impl::deny(iter1.is_contracted(), "Cannot assign to a tensor contraction!");
+    impl::soft_deny(iter1.is_contracted(), "Cannot assign to a tensor contraction!");
 
     for (auto end=this->end(); iter1 != end; ++iter1, ++iter2) *iter1 = *iter2;
 }

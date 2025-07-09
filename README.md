@@ -42,13 +42,14 @@ int main() {
         {mu, CONTRAVARIANT},
         {nu, COVARIANT}
     };
+    // The alternative aliases UPPER and LOWER can also be used for index variance
 
     // Tensors are forward iterable so are compatible with many STL algorithms
     std::ranges::iota(T, 0);
     std::ranges::iota(U, 0);
 
     // VariTensor uses operator[] to index tensors
-    // Could omit the indices here as they are the same we declared with, but they add to readability
+    // We could omit the indices here as they are the same we declared with, but they aid readability
     Tensor V = T[mu] * U[mu, nu];
 }
 ```

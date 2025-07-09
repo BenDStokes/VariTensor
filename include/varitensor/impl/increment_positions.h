@@ -23,7 +23,7 @@ bool increment_positions(
      * true if the increment was successful, false if the end of the dimensions has been reached.
      */
     for (size_t i=0; i<positions.size(); ++i) {
-        // check if we're about to overflow
+        // check if we're about to overflow the next index
         if (positions[i] + 1 == dimensions[i].index.size()) {
             // if not, reset it and move on to the next one
             positions[i] = 0;

@@ -17,8 +17,13 @@
 
 namespace varitensor::impl {
 
+// =================================================================================================
+//                                                                                   Couple struct |
+// =================================================================================================
+
 inline void Couple::add(const int dimension, const bool is_metric) {
-    deny(dims[0] != -1 && dims[1] != -1, "Indices in multiplication expression cannot appear more than twice!");
+    soft_deny(dims[0] != -1 && dims[1] != -1,
+              "Indices in multiplication expression cannot appear more than twice!");
     const auto target = dims[0] == -1 ? 0 : 1;
     dims[target] = dimension;
     if (!is_metric) other_index = dimension;
@@ -61,6 +66,7 @@ inline SummedOpIterator::SummedOpIterator(const double modifier, const Expressio
 
     for (auto & iterator : m_sub_iterators) {
         auto dimensions = std::visit(GetDimensions, iterator);
+
         for (size_t k = 0; k < dimensions.size(); ++k) {
             total_dimensions.emplace_back(dimensions[k]);
 
@@ -85,11 +91,11 @@ inline SummedOpIterator::SummedOpIterator(const double modifier, const Expressio
     }
 
     for (auto& dimension: total_dimensions) {
-        if (auto& couple = partners[dimension.index.id()]; couple.is_repeated()) {
+        if (auto& couple = partners[dimension.index.id()]; couple.is_repeated()) { // repeated index
             m_repeated.emplace_back(dimension);
             couple.clear();
         }
-        else if (couple.has()) {
+        else if (couple.has()) { // non-repeated index
             m_dimensions.push_back(dimension);
             m_dimensions.back().width = m_size;
             m_size *= dimension.size();

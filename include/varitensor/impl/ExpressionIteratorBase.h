@@ -14,7 +14,7 @@ namespace varitensor::impl {
 class ExpressionIteratorBase {
 /** Class to reduce code duplication in expression iterators
  *
- * Some potential virtual functions have been omitted for performance
+ * Virtual functions have been omitted for performance
  */
 public:
     using iterator_category = std::forward_iterator_tag;
