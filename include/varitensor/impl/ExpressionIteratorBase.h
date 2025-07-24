@@ -24,7 +24,7 @@ bool increment_positions( // static to avoid having to use virtual functions
      */
     for (size_t i=0; i<positions.size(); ++i) {
         // check if we're about to overflow the next index
-        if (positions[i] + 1 == dimensions[i].index.size()) {
+        if (positions[i] + 1 == dimensions[i].index.size()) [[unlikely]] {
             // if not, reset it and move on to the next one
             positions[i] = 0;
             iterator.reset(dimensions[i].index.id());

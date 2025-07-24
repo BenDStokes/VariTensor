@@ -144,12 +144,12 @@ public:
 
 private:
     void increment(const int index_id) const { // technically non-const but has to be callable from deref()
-        if (index_id == m_cached_id) m_data_ptr += m_cached_info.width;
+        if (index_id == m_cached_id) [[likely]] m_data_ptr += m_cached_info.width;
         else if (m_widths.contains(index_id)) m_data_ptr += m_widths.at(index_id).width;
     }
 
     void reset(const int index_id) const { // technically non-const but has to be callable from deref()
-        if (index_id == m_cached_id) m_data_ptr -= m_cached_info.total;
+        if (index_id == m_cached_id) [[likely]] m_data_ptr -= m_cached_info.total;
         else if (m_widths.contains(index_id)) m_data_ptr -= m_widths.at(index_id).total;
     }
 

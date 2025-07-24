@@ -77,7 +77,7 @@ inline double LinkedOpIterator::operator*() const {
 }
 
 inline bool LinkedOpIterator::operator==(const LinkedOpIterator& other) const {
-    if (m_end != other.m_end) return false;
+    if (m_end != other.m_end) [[likely]] return false;
     if (m_end) return true;
     return m_modifier == other.m_modifier && m_positions == other.m_positions; // good enough for normal iteration
 }

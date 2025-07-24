@@ -15,7 +15,7 @@
 namespace varitensor::impl {
 
 inline void deny(const bool condition, const std::string& message) {
-    if (condition) {
+    if (condition) [[unlikely]] {
         throw std::logic_error(message);
     }
 }
