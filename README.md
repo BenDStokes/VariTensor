@@ -31,7 +31,7 @@ Older versions may work, but C++23 is required.
 
 The sources can be downloaded from this repository and are ready to be built as-is without
 additional configuration. Vari-Tensor has **no dependencies** and can easily be built with
-CMake.
+CMake either directly or via FetchContent.
 
 ## :arrow_forward: Usage
 
