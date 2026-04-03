@@ -25,7 +25,7 @@ void deallocate(double* data) {
     operator delete[](data, M256_ALIGN);
 }
 
-double* allocate(const size_t size) {
+DoublePtr allocate(const size_t size) {
     /**
      * To make SIMD operations more efficient, we allocate aligned memory and pad
      * all tensors to be multiples of the packing size.
@@ -33,17 +33,17 @@ double* allocate(const size_t size) {
     const size_t remainder = size % REG_WIDTH_256;
     const size_t padded_size = remainder ? size - remainder + REG_WIDTH_256 : size;
 
-    return static_cast<double*> (
-        operator new[](
-            sizeof(double) * padded_size,
-            M256_ALIGN
-        )
-    );
+    return DoublePtr{
+        static_cast<double*> (
+            operator new[](sizeof(double) * padded_size, M256_ALIGN)
+        ),
+        deallocate
+    };
 }
 
-double* allocate_zeroed(const size_t size) {
-    double* data = allocate(size);
-    std::memset(data, 0, size*sizeof(double));
+DoublePtr allocate_zeroed(const size_t size) {
+    DoublePtr data = allocate(size);
+    std::memset(data.get(), 0, size*sizeof(double));
     return data;
 }
 
@@ -154,12 +154,20 @@ void deallocate(double* data) {
     std::free(data);
 }
 
-double* allocate(const size_t size) {
-    return static_cast<double*>(malloc(size * sizeof(double)));
+DoublePtr allocate(const size_t size) {
+    auto data = DoublePtr{
+        static_cast<double*>(malloc(size * sizeof(double))),
+        deallocate
+    };
+    if (!data) throw std::bad_alloc{};
+    return data;
 }
 
-double* allocate_zeroed(const size_t size) {
-    return static_cast<double*>(calloc(size, sizeof(double)));
+DoublePtr allocate_zeroed(const size_t size) {
+    return DoublePtr{
+        static_cast<double*>(calloc(size, sizeof(double))),
+        deallocate
+    };
 }
 
 void copy(double* data1, const double* data2, const size_t size) {
@@ -200,15 +208,15 @@ void piecewise(const double* data1, const double* data2,  double* data3, const s
 
 #endif
 
-double* allocate(const size_t size, const double& initial_value) {
-    double* data = allocate(size);
-    std::fill_n(data, size, initial_value);
+DoublePtr allocate(const size_t size, const double& initial_value) {
+    DoublePtr data = allocate(size);
+    std::fill_n(data.get(), size, initial_value);
     return data;
 }
 
-double* allocate_copy(const double* data, const size_t size) {
-    double* copy = allocate(size);
-    std::memcpy(copy, data, size * sizeof(double));
+DoublePtr allocate_copy(const double* data, const size_t size) {
+    DoublePtr copy = allocate(size);
+    std::memcpy(copy.get(), data, size * sizeof(double));
     return copy;
 }
 

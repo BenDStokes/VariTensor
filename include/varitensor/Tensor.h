@@ -111,7 +111,7 @@ public:
         }
     }
 
-    ~Tensor() noexcept;
+    ~Tensor() noexcept = default;
 
 // =================================================================================================
 //                                                                                     copy / move |
@@ -143,7 +143,7 @@ public:
     template<impl::Indexable_c... Indices>
     requires (impl::AllInt_c<Indices...> && sizeof...(Indices) > 0)
     double& operator[](Indices... indices) {
-        auto data = m_data;
+        auto data = m_data.get();
 
         size_t n = 0;
         for(const auto index : {indices...}) {
@@ -169,7 +169,7 @@ public:
         impl::Dimensions passed_indices;
         construct_passed_indices(n, offset, passed_indices, indices...);
 
-        return View{*this, m_data + offset, passed_indices};
+        return View{*this, m_data.get() + offset, passed_indices};
     }
 
     View operator[](Indexables indices) const;
@@ -202,9 +202,10 @@ public:
     }
     std::ostream& dump(S& ostream) const {
         // outputs a comma-separated dump of every value in the tensor
-        ostream << std::to_string(*m_data);
+        const double* data = m_data.get();
+        ostream << std::to_string(*data);
         for(size_t i=1; i<m_size; ++i) {
-            ostream << std::string{", "} << std::to_string(*(m_data + i));
+            ostream << std::string{", "} << std::to_string(*(data + i));
         }
         ostream << "\n";
 
@@ -335,7 +336,7 @@ private:
 
     impl::Dimensions m_dimensions;
     size_t m_size{1};
-    double* m_data{nullptr};
+    impl::DoublePtr m_data{nullptr, [](double*){}};
     std::string m_name{impl::TENSOR_DEFAULT_NAME};
     impl::TensorClass m_tensor_class{impl::TENSOR};
 
@@ -409,8 +410,9 @@ private:
             (pow(expected_size, delta.rank()) - 1) / (expected_size - 1)
         );
 
+        double* data = delta.m_data.get();
         for (int i=0; i<expected_size; ++i) {
-            delta.m_data[i * index_length_sum] = 1;
+            data[i * index_length_sum] = 1;
         }
 
         return delta;
@@ -438,19 +440,20 @@ private:
 
     template<typename IteratorType>
     void populate_general(IteratorType& iter, IteratorType end, const bool allocate) {
-        double* new_data = m_data;
-        const size_t new_size = iter.size();
+        if (allocate) {
+            const size_t new_size = iter.size();
+            impl::DoublePtr new_data = impl::allocate(new_size);
 
-        if (allocate) new_data = impl::allocate(new_size);
+            double* running_ptr = new_data.get();
+            for (; iter != end; ++iter) *running_ptr++ = iter.deref();
 
-        double* running_ptr = new_data;
-        for (; iter != end; ++iter) *running_ptr++ = iter.deref();
-
-        if (allocate) { // for LinkedOp assignment, the original tensor is already set up correctly
             m_dimensions = iter.dimensions();
             m_size = new_size;
-            impl::deallocate(m_data);
-            m_data = new_data;
+            m_data.swap(new_data);
+        }
+        else {
+            double* running_ptr = m_data.get();
+            for (; iter != end; ++iter) *running_ptr++ = iter.deref();
         }
     }
 

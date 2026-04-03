@@ -8,6 +8,7 @@
 #define VARITENSOR_COMMON_H
 
 #include <functional>
+#include <memory>
 #include <variant>
 
 #include "Index.h"
@@ -46,8 +47,9 @@ struct Dimension {
     size_t width{}; // the memory width of a single increment along this dimension
     [[nodiscard]] int size() const {return index.size();}
 };
-
 using Dimensions = std::vector<Dimension>;
+
+using DoublePtr = std::unique_ptr<double, void(*)(double*)>;
 
 template <bool is_const>
 class ViewIterator;

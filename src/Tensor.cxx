@@ -6,8 +6,6 @@
 
 #include "varitensor/Tensor.h"
 
-#include <cstring>
-
 namespace varitensor {
 
 // =================================================================================================
@@ -132,10 +130,6 @@ Tensor::Tensor(std::string name, const double initial_value):
     *m_data = initial_value;
 }
 
-Tensor::~Tensor() noexcept {
-    impl::deallocate(m_data);
-}
-
 // =================================================================================================
 //                                                                                     copy / move |
 // =================================================================================================
@@ -147,7 +141,7 @@ Tensor::Tensor(const Tensor& other):
     m_tensor_class{other.m_tensor_class}
 {
     m_data = impl::allocate(m_size);
-    std::memcpy(m_data, other.m_data, m_size*sizeof(double));
+    impl::copy(m_data.get(), other.m_data.get(), m_size);
 }
 
 Tensor& Tensor::operator=(const Tensor& other) {
@@ -157,10 +151,9 @@ Tensor& Tensor::operator=(const Tensor& other) {
         m_size = other.m_size;
         m_tensor_class = other.m_tensor_class;
 
-        const auto new_data = impl::allocate(m_size);
-        std::memcpy(new_data, other.m_data, m_size*sizeof(double));
-        impl::deallocate(m_data);
-        m_data = new_data;
+        impl::DoublePtr new_data = impl::allocate(m_size);
+        impl::copy(new_data.get(), other.m_data.get(), m_size);
+        m_data.swap(new_data);
     }
 
     return *this;
@@ -169,7 +162,7 @@ Tensor& Tensor::operator=(const Tensor& other) {
 Tensor::Tensor(Tensor&& other) noexcept:
     m_dimensions{std::move(other.m_dimensions)},
     m_size{other.m_size},
-    m_data{other.m_data},
+    m_data{std::move(other.m_data)},
     m_name{std::move(other.m_name)},
     m_tensor_class{other.m_tensor_class}
 {
@@ -183,8 +176,7 @@ Tensor& Tensor::operator=(Tensor&& other) noexcept {
         m_size = other.m_size;
         m_tensor_class = other.m_tensor_class;
 
-        impl::deallocate(m_data);
-        m_data = other.m_data;
+        m_data = std::move(other.m_data);
         other.m_data = nullptr;
     }
 
@@ -228,12 +220,12 @@ View Tensor::operator[](Indexables indices) const {
         }
     }
 
-    return View{*this, m_data + offset, passed_indices};
+    return View{*this, m_data.get() + offset, passed_indices};
 }
 
 double& Tensor::operator[](const std::vector<int>& indices) const {
     impl::deny(indices.size() > m_dimensions.size(), "Indexing dimension mismatch");
-    auto data = m_data;
+    auto data = m_data.get();
 
     int n = 0;
     for(const auto index : indices) {
@@ -345,7 +337,7 @@ Tensor& Tensor::transpose(const Index& first, const Index& second) {
         }
     };
 
-    if (static_dims.empty()) transpose_slice(m_data);
+    if (static_dims.empty()) transpose_slice(m_data.get());
     else {
         auto static_iter = begin();
         std::vector<int> static_positions(static_dims.size());

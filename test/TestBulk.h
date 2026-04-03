@@ -12,21 +12,19 @@
 
 inline bool broadcast_vec_test(const size_t size1, const size_t size2) {
     // given
-    auto* a = impl::allocate(size1);
-    for (size_t i=0; i<size1; i++) a[i] = static_cast<double>(i);
-    auto* b = impl::allocate(size2);
+    const auto a = impl::allocate(size1);
+    for (size_t i=0; i<size1; i++) a.get()[i] = static_cast<double>(i);
+    const auto b = impl::allocate(size2);
 
     // when
-    impl::broadcast_vec(a, b, size1, size2);
+    impl::broadcast_vec(a.get(), b.get(), size1, size2);
 
     // then
     bool result = true;
     for (size_t i=0; i<size2; i++) {
-        if (b[i] != static_cast<double>(i%size1)) result = false;
+        if (b.get()[i] != static_cast<double>(i%size1)) result = false;
     }
 
-    impl::deallocate(a);
-    impl::deallocate(b);
     return result;
 }
 
@@ -110,23 +108,21 @@ struct BroadcastVec9to27 final: TestSet::Test {
 
 inline bool broadcast_chunks_test(const size_t size1, const size_t size2) {
     // given
-    auto* a = impl::allocate(size1);
-    for (size_t i=0; i<size1; i++) a[i] = static_cast<double>(i);
+    auto a = impl::allocate(size1);
+    for (size_t i=0; i<size1; i++) a.get()[i] = static_cast<double>(i);
 
-    auto* b = impl::allocate(size2);
-    for (size_t i=0; i<size2; i++) b[i] = 1;
+    auto b = impl::allocate(size2);
+    for (size_t i=0; i<size2; i++) b.get()[i] = 1;
 
     // when
-    impl::broadcast_chunks(a, b, size1, size2/size1);
+    impl::broadcast_chunks(a.get(), b.get(), size1, size2/size1);
 
     // then
     bool result = true;
     for (size_t i=0; i<size2; i++) {
-        if (b[i] != static_cast<double>(i/size1)) result = false;
+        if (b.get()[i] != static_cast<double>(i/size1)) result = false;
     }
 
-    impl::deallocate(a);
-    impl::deallocate(b);
     return result;
 }
 

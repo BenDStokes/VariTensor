@@ -747,10 +747,10 @@ void set_print_precision(const int precision) {
 
 void write_data(std::ostream& stream, const Tensor& tensor) {
     // outputs just the tensor data in pretty format
-    if(tensor.m_dimensions.empty()) impl::output_row(stream, tensor.m_data, tensor.m_size);
+    if(tensor.m_dimensions.empty()) impl::output_row(stream, tensor.m_data.get(), tensor.m_size);
     else if(tensor.m_dimensions.size() == 1) {
-        if (tensor.variance(0) == CONTRAVARIANT) impl::output_column(stream, tensor.m_data, tensor.m_size);
-        else impl::output_row(stream, tensor.m_data, tensor.m_size);
+        if (tensor.variance(0) == CONTRAVARIANT) impl::output_column(stream, tensor.m_data.get(), tensor.m_size);
+        else impl::output_row(stream, tensor.m_data.get(), tensor.m_size);
     }
     else if (tensor.m_dimensions.size() <= 4) impl::output_234(tensor, tensor.m_dimensions, stream);
     else tensor.dump(stream);

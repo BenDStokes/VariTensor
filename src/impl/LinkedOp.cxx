@@ -160,24 +160,23 @@ void LinkedOp::populate(Tensor& tensor, const bool allocate/* = true */) {
         if (allocate) {
             tensor.m_dimensions = preparatory.dimensions;
             tensor.m_size = preparatory.size;
-            double* new_data = allocate_copy(
+            DoublePtr new_data = allocate_copy(
                 std::visit(IsContiguous, preparatory.sub_iterators[0]) ?
                     std::get<View>(m_sub_expressions[0]).data() :
-                    std::visit(GetTensor{}, m_sub_expressions[0]).m_data,
+                    std::visit(GetTensor{}, m_sub_expressions[0]).m_data.get(),
                 tensor.m_size
             );
-            deallocate(tensor.m_data);
-            tensor.m_data = new_data;
+            tensor.m_data.swap(new_data);
         }
 
         // for +=/-=, we start with the 0th in the right place, for +/- we handled with 0th above, so start i at 1
         for (unsigned i=1; i<preparatory.sub_iterators.size(); ++i) {
             piecewise(
-                tensor.m_data,
+                tensor.m_data.get(),
                 std::visit(IsContiguous, preparatory.sub_iterators[i]) ?
                     std::get<View>(m_sub_expressions[i]).data() :
-                    std::visit(GetTensor{}, m_sub_expressions[i]).m_data,
-                tensor.m_data,
+                    std::visit(GetTensor{}, m_sub_expressions[i]).m_data.get(),
+                tensor.m_data.get(),
                 tensor.m_size,
                 m_signs[i]
             );

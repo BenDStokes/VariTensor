@@ -13,10 +13,10 @@ namespace varitensor::impl {
 
 void deallocate(double* data);
 
-double* allocate(size_t size);
-double* allocate(size_t size, const double& initial_value);
-double* allocate_zeroed(size_t size);
-double* allocate_copy(const double* data, size_t size);
+DoublePtr allocate(size_t size);
+DoublePtr allocate(size_t size, const double& initial_value);
+DoublePtr allocate_zeroed(size_t size);
+DoublePtr allocate_copy(const double* data, size_t size);
 
 void copy(double* data1, const double* data2, size_t size);
 

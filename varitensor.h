@@ -13,6 +13,7 @@
 #include <functional>
 #include <iomanip>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <ranges>
 #include <sstream>
@@ -78,6 +79,8 @@ inline auto VBegin = [](auto& expression) {return expression.vbegin();};
 inline auto GetDimensions = [](auto& expression) {return expression.dimensions();};
 inline auto GetSize = [](auto& expression) {return expression.size();};
 inline auto GetData = [](auto& iter) {return iter.data();};
+
+using DoublePtr = std::unique_ptr<double, void(*)(double*)>;
 
 } // namespace impl
 
@@ -255,7 +258,7 @@ using Indexable = std::variant<int, Index>;
 using Indexables = std::vector<Indexable>;
 
 void deallocate(double* data);
-double* allocate(size_t size);
+DoublePtr allocate(size_t size);
 
 struct Preparatory {
     ExprState state{SCALAR};
@@ -579,7 +582,7 @@ public:
         }
     }
 
-    ~Tensor() noexcept;
+    ~Tensor() noexcept = default;
 
     Tensor(const Tensor& other);
     Tensor& operator=(const Tensor& other);
@@ -599,7 +602,7 @@ public:
     template<impl::Indexable_c... Indices>
     requires (impl::AllInt_c<Indices...> && sizeof...(Indices) > 0)
     double& operator[](Indices... indices) {
-        auto data = m_data;
+        auto data = m_data.get();
 
         size_t n = 0;
         for(const auto index : {indices...}) {
@@ -625,7 +628,7 @@ public:
         impl::Dimensions passed_indices;
         construct_passed_indices(n, offset, passed_indices, indices...);
 
-        return View{*this, m_data + offset, passed_indices};
+        return View{*this, m_data.get() + offset, passed_indices};
     }
 
     View operator[](impl::Indexables indices) const;
@@ -652,9 +655,10 @@ public:
     }
     std::ostream& dump(S& ostream) const {
         // outputs a comma-separated dump of every value in the tensor
-        ostream << std::to_string(*m_data);
+        const double* data = m_data.get();
+        ostream << std::to_string(*data);
         for(size_t i=1; i<m_size; ++i) {
-            ostream << std::string{", "} << std::to_string(*(m_data + i));
+            ostream << std::string{", "} << std::to_string(*(data + i));
         }
         ostream << "\n";
 
@@ -745,7 +749,7 @@ private:
 
     impl::Dimensions m_dimensions;
     size_t m_size{1};
-    double* m_data{nullptr};
+    impl::DoublePtr m_data{nullptr, [](double*){}};
     std::string m_name{impl::TENSOR_DEFAULT_NAME};
     impl::TensorClass m_tensor_class{impl::TENSOR};
 
@@ -815,8 +819,9 @@ private:
             (std::pow(expected_size, delta.rank()) - 1) / (expected_size - 1)
         );
 
+        double* data = delta.m_data.get();
         for (int i=0; i<expected_size; ++i) {
-            delta.m_data[i * index_length_sum] = 1;
+            data[i * index_length_sum] = 1;
         }
 
         return delta;
@@ -838,19 +843,20 @@ private:
 
     template<typename IteratorType>
     void populate_general(IteratorType& iter, IteratorType end, const bool allocate) {
-        double* new_data = m_data;
-        const size_t new_size = iter.size();
+        if (allocate) {
+            const size_t new_size = iter.size();
+            impl::DoublePtr new_data = impl::allocate(new_size);
 
-        if (allocate) new_data = impl::allocate(new_size);
+            double* running_ptr = new_data.get();
+            for (; iter != end; ++iter) *running_ptr++ = iter.deref();
 
-        double* running_ptr = new_data;
-        for (; iter != end; ++iter) *running_ptr++ = iter.deref();
-
-        if (allocate) { // for LinkedOp assignment, the original tensor is already set up correctly
             m_dimensions = iter.dimensions();
             m_size = new_size;
-            impl::deallocate(m_data);
-            m_data = new_data;
+            m_data.swap(new_data);
+        }
+        else {
+            double* running_ptr = m_data.get();
+            for (; iter != end; ++iter) *running_ptr++ = iter.deref();
         }
     }
 
@@ -935,21 +941,25 @@ inline void deallocate(double* data) {
     operator delete[](data, M256_ALIGN);
 }
 
-inline double* allocate(const size_t size) {
+inline DoublePtr allocate(const size_t size) {
+    /**
+     * To make SIMD operations more efficient, we allocate aligned memory and pad
+     * all tensors to be multiples of the packing size.
+     */
     const size_t remainder = size % REG_WIDTH_256;
     const size_t padded_size = remainder ? size - remainder + REG_WIDTH_256 : size;
 
-    return static_cast<double*> (
-        operator new[](
-            sizeof(double) * padded_size,
-            M256_ALIGN
-        )
-    );
+    return DoublePtr{
+        static_cast<double*> (
+            operator new[](sizeof(double) * padded_size, M256_ALIGN)
+        ),
+        deallocate
+    };
 }
 
-inline double* allocate_zeroed(const size_t size) {
-    double* data = allocate(size);
-    std::memset(data, 0, size*sizeof(double));
+inline DoublePtr allocate_zeroed(const size_t size) {
+    DoublePtr data = allocate(size);
+    std::memset(data.get(), 0, size*sizeof(double));
     return data;
 }
 
@@ -1049,12 +1059,20 @@ inline void deallocate(double* data) {
     std::free(data);
 }
 
-inline double* allocate(const size_t size) {
-    return static_cast<double*>(malloc(size * sizeof(double)));
+inline DoublePtr allocate(const size_t size) {
+    auto data = DoublePtr{
+        static_cast<double*>(malloc(size * sizeof(double))),
+        deallocate
+    };
+    if (!data) throw std::bad_alloc{};
+    return data;
 }
 
-inline double* allocate_zeroed(const size_t size) {
-    return static_cast<double*>(calloc(size, sizeof(double)));
+inline DoublePtr allocate_zeroed(const size_t size) {
+    return DoublePtr{
+        static_cast<double*>(calloc(size, sizeof(double))),
+        deallocate
+    };
 }
 
 inline void copy(double* data1, const double* data2, const size_t size) {
@@ -1095,15 +1113,15 @@ inline void piecewise(const double* data1, const double* data2,  double* data3, 
 
 #endif
 
-inline double* allocate(const size_t size, const double& initial_value) {
-    double* data = allocate(size);
-    std::fill_n(data, size, initial_value);
+inline DoublePtr allocate(const size_t size, const double& initial_value) {
+    DoublePtr data = allocate(size);
+    std::fill_n(data.get(), size, initial_value);
     return data;
 }
 
-inline double* allocate_copy(const double* data, const size_t size) {
-    double* copy = allocate(size);
-    std::memcpy(copy, data, size * sizeof(double));
+inline DoublePtr allocate_copy(const double* data, const size_t size) {
+    DoublePtr copy = allocate(size);
+    std::memcpy(copy.get(), data, size * sizeof(double));
     return copy;
 }
 
@@ -1486,7 +1504,7 @@ inline void Preparatory::prepare_product_operation(const Expressions& sub_expres
 
 inline View::View(const Tensor& target):
     m_target{target},
-    m_data_ptr{target.m_data},
+    m_data_ptr{target.m_data.get()},
     m_dimensions{m_target.m_dimensions}
 {
     for (size_t i = 0; i < m_dimensions.size(); ++i) {
@@ -1497,7 +1515,7 @@ inline View::View(const Tensor& target):
     }
 }
 
-inline View::View(const Tensor& target, double* data_ptr, impl::Dimensions dimensions):
+inline View::View(const Tensor& target, double* const data_ptr, impl::Dimensions dimensions):
     m_target{target},
     m_data_ptr{data_ptr},
     m_dimensions{std::move(dimensions)}
@@ -1581,10 +1599,10 @@ inline void View::populate(Tensor& tensor, const bool allocate/* = true */) cons
     }
 
     if (!iter.is_contracted() && iter.is_contiguous()) {
-        impl::copy(tensor.m_data, m_data_ptr, tensor.m_size);
+        impl::copy(tensor.m_data.get(), m_data_ptr, tensor.m_size);
     }
     else {
-        double* running_ptr = tensor.m_data;
+        double* running_ptr = tensor.m_data.get();
         for (const auto end=cend(); iter != end; ++iter, ++running_ptr) {
             *running_ptr = *iter;
         }
@@ -1793,24 +1811,23 @@ inline void LinkedOp::populate(Tensor& tensor, const bool allocate/* = true */) 
         if (allocate) {
             tensor.m_dimensions = preparatory.dimensions;
             tensor.m_size = preparatory.size;
-            double* new_data = allocate_copy(
+            DoublePtr new_data = allocate_copy(
                 std::visit(IsContiguous, preparatory.sub_iterators[0]) ?
                     std::get<View>(m_sub_expressions[0]).data() :
-                    std::visit(GetTensor{}, m_sub_expressions[0]).m_data,
+                    std::visit(GetTensor{}, m_sub_expressions[0]).m_data.get(),
                 tensor.m_size
             );
-            deallocate(tensor.m_data);
-            tensor.m_data = new_data;
+            tensor.m_data.swap(new_data);
         }
 
         // for +=/-=, we start with the 0th in the right place, for +/- we handled with 0th above, so start i at 1
         for (unsigned i=1; i<preparatory.sub_iterators.size(); ++i) {
             piecewise(
-                tensor.m_data,
+                tensor.m_data.get(),
                 std::visit(IsContiguous, preparatory.sub_iterators[i]) ?
                     std::get<View>(m_sub_expressions[i]).data() :
-                    std::visit(GetTensor{}, m_sub_expressions[i]).m_data,
-                tensor.m_data,
+                    std::visit(GetTensor{}, m_sub_expressions[i]).m_data.get(),
+                tensor.m_data.get(),
                 tensor.m_size,
                 m_signs[i]
             );
@@ -1841,19 +1858,19 @@ inline void LinkedOp::populate(Tensor& tensor, const bool allocate/* = true */) 
 
 inline void ProductOp::populate(Tensor& tensor) {
     auto populate_free_multiplication = [&](Preparatory& preparatory) {
-        double* new_data = allocate(preparatory.size, 0);
+        DoublePtr new_data = allocate(preparatory.size, 0);
 
         if (std::visit(IsContiguous, preparatory.sub_iterators[0])) {
             broadcast_vec(
                 std::visit(GetData, preparatory.sub_iterators[0]),
-                new_data,
+                new_data.get(),
                 std::visit(GetSize, preparatory.sub_iterators[0]),
                 preparatory.size
             );
         }
         else {
             const auto tmp = std::visit(GetTensor{}, m_sub_expressions[0]);
-            broadcast_vec(tmp.m_data, new_data, tmp.size(), preparatory.size);
+            broadcast_vec(tmp.m_data.get(), new_data.get(), tmp.size(), preparatory.size);
         }
 
         size_t dim_i = std::visit(GetDimensions, preparatory.sub_iterators[0]).size() - 1;
@@ -1865,32 +1882,29 @@ inline void ProductOp::populate(Tensor& tensor) {
             if (std::visit(IsContiguous, preparatory.sub_iterators[i])) {
                 broadcast_chunks(
                     std::visit(GetData, preparatory.sub_iterators[i]),
-                    new_data,
+                    new_data.get(),
                     std::visit(GetSize, preparatory.sub_iterators[i]),
                     width
                 );
             }
             else {
                 const auto tmp = std::visit(GetTensor{}, m_sub_expressions[i]);
-                broadcast_chunks(tmp.m_data, new_data, tmp.size(), width);
+                broadcast_chunks(tmp.m_data.get(), new_data.get(), tmp.size(), width);
             }
 
             for (size_t j=dim_i_previous; j < dim_i; ++j) width *= preparatory.dimensions[j].size();
         }
 
-        broadcast(m_modifier, new_data, preparatory.size);
+        broadcast(m_modifier, new_data.get(), preparatory.size);
 
         // Set up the tensor at the end in case we're doing an assignment
         tensor.m_dimensions = preparatory.dimensions;
         tensor.m_size = preparatory.size;
-
-        deallocate(tensor.m_data);
-        tensor.m_data = new_data;
+        tensor.m_data.swap(new_data);
     };
 
     switch (Preparatory preparatory{m_sub_expressions, PRODUCT}; preparatory.state) {
     case SCALAR:
-        deallocate(tensor.m_data);
         tensor.populate_scalar(m_modifier, true);
         break;
     case FREE_MULTIPLICATION:
@@ -2063,10 +2077,6 @@ inline Tensor::Tensor(std::string name, const double initial_value):
     *m_data = initial_value;
 }
 
-inline Tensor::~Tensor() noexcept {
-    impl::deallocate(m_data);
-}
-
 inline Tensor::Tensor(const Tensor& other):
     m_dimensions{other.m_dimensions},
     m_size{other.m_size},
@@ -2074,7 +2084,7 @@ inline Tensor::Tensor(const Tensor& other):
     m_tensor_class{other.m_tensor_class}
 {
     m_data = impl::allocate(m_size);
-    std::memcpy(m_data, other.m_data, m_size*sizeof(double));
+    impl::copy(m_data.get(), other.m_data.get(), m_size);
 }
 
 inline Tensor& Tensor::operator=(const Tensor& other) {
@@ -2084,10 +2094,9 @@ inline Tensor& Tensor::operator=(const Tensor& other) {
         m_size = other.m_size;
         m_tensor_class = other.m_tensor_class;
 
-        const auto new_data = impl::allocate(m_size);
-        std::memcpy(new_data, other.m_data, m_size*sizeof(double));
-        impl::deallocate(m_data);
-        m_data = new_data;
+        impl::DoublePtr new_data = impl::allocate(m_size);
+        impl::copy(new_data.get(), other.m_data.get(), m_size);
+        m_data.swap(new_data);
     }
 
     return *this;
@@ -2096,7 +2105,7 @@ inline Tensor& Tensor::operator=(const Tensor& other) {
 inline Tensor::Tensor(Tensor&& other) noexcept:
     m_dimensions{std::move(other.m_dimensions)},
     m_size{other.m_size},
-    m_data{other.m_data},
+    m_data{std::move(other.m_data)},
     m_name{std::move(other.m_name)},
     m_tensor_class{other.m_tensor_class}
 {
@@ -2110,8 +2119,7 @@ inline Tensor& Tensor::operator=(Tensor&& other) noexcept {
         m_size = other.m_size;
         m_tensor_class = other.m_tensor_class;
 
-        impl::deallocate(m_data);
-        m_data = other.m_data;
+        m_data = std::move(other.m_data);
         other.m_data = nullptr;
     }
 
@@ -2147,12 +2155,12 @@ inline View Tensor::operator[](impl::Indexables indices) const {
         }
     }
 
-    return View{*this, m_data + offset, passed_indices};
+    return View{*this, m_data.get() + offset, passed_indices};
 }
 
 inline double& Tensor::operator[](const std::vector<int>& indices) const {
     impl::deny(indices.size() > m_dimensions.size(), "Indexing dimension mismatch");
-    auto data = m_data;
+    auto data = m_data.get();
 
     int n = 0;
     for(const auto index : indices) {
@@ -2252,7 +2260,7 @@ inline Tensor& Tensor::transpose(const Index& first, const Index& second) {
         }
     };
 
-    if (static_dims.empty()) transpose_slice(m_data);
+    if (static_dims.empty()) transpose_slice(m_data.get());
     else {
         auto static_iter = begin();
         std::vector<int> static_positions(static_dims.size());
@@ -3201,10 +3209,10 @@ inline void set_print_precision(const int precision) {
 
 inline void write_data(std::ostream& stream, const Tensor& tensor) {
     // outputs just the tensor data in pretty format
-    if(tensor.m_dimensions.empty()) impl::output_row(stream, tensor.m_data, tensor.m_size);
+    if(tensor.m_dimensions.empty()) impl::output_row(stream, tensor.m_data.get(), tensor.m_size);
     else if(tensor.m_dimensions.size() == 1) {
-        if (tensor.variance(0) == CONTRAVARIANT) impl::output_column(stream, tensor.m_data, tensor.m_size);
-        else impl::output_row(stream, tensor.m_data, tensor.m_size);
+        if (tensor.variance(0) == CONTRAVARIANT) impl::output_column(stream, tensor.m_data.get(), tensor.m_size);
+        else impl::output_row(stream, tensor.m_data.get(), tensor.m_size);
     }
     else if (tensor.m_dimensions.size() <= 4) impl::output_234(tensor, tensor.m_dimensions, stream);
     else tensor.dump(stream);

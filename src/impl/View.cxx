@@ -36,7 +36,7 @@ bool ViewIterator<true>::is_metric() const {
 
 View::View(const Tensor& target):
     m_target{target},
-    m_data_ptr{target.m_data},
+    m_data_ptr{target.m_data.get()},
     m_dimensions{m_target.m_dimensions}
 {
     for (size_t i = 0; i < m_dimensions.size(); ++i) {
@@ -47,7 +47,7 @@ View::View(const Tensor& target):
     }
 }
 
-View::View(const Tensor& target, double* data_ptr, impl::Dimensions dimensions):
+View::View(const Tensor& target, double* const data_ptr, impl::Dimensions dimensions):
     m_target{target},
     m_data_ptr{data_ptr},
     m_dimensions{std::move(dimensions)}
@@ -139,10 +139,10 @@ void View::populate(Tensor& tensor, const bool allocate/* = true */) const {
     }
 
     if (!iter.is_contracted() && iter.is_contiguous()) {
-        impl::copy(tensor.m_data, m_data_ptr, tensor.m_size);
+        impl::copy(tensor.m_data.get(), m_data_ptr, tensor.m_size);
     }
     else {
-        double* running_ptr = tensor.m_data;
+        double* running_ptr = tensor.m_data.get();
         for (const auto end=cend(); iter != end; ++iter, ++running_ptr) {
             *running_ptr = *iter;
         }

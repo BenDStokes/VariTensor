@@ -106,19 +106,19 @@ bool ProductOpIterator::is_contiguous() {
 
 void ProductOp::populate(Tensor& tensor) {
     auto populate_free_multiplication = [&](Preparatory& preparatory) {
-        double* new_data = allocate(preparatory.size, 0);
+        DoublePtr new_data = allocate(preparatory.size, 0);
 
         if (std::visit(IsContiguous, preparatory.sub_iterators[0])) {
             broadcast_vec(
                 std::visit(GetData, preparatory.sub_iterators[0]),
-                new_data,
+                new_data.get(),
                 std::visit(GetSize, preparatory.sub_iterators[0]),
                 preparatory.size
             );
         }
         else {
             const auto tmp = std::visit(GetTensor{}, m_sub_expressions[0]);
-            broadcast_vec(tmp.m_data, new_data, tmp.size(), preparatory.size);
+            broadcast_vec(tmp.m_data.get(), new_data.get(), tmp.size(), preparatory.size);
         }
 
         size_t dim_i = std::visit(GetDimensions, preparatory.sub_iterators[0]).size() - 1;
@@ -130,32 +130,29 @@ void ProductOp::populate(Tensor& tensor) {
             if (std::visit(IsContiguous, preparatory.sub_iterators[i])) {
                 broadcast_chunks(
                     std::visit(GetData, preparatory.sub_iterators[i]),
-                    new_data,
+                    new_data.get(),
                     std::visit(GetSize, preparatory.sub_iterators[i]),
                     width
                 );
             }
             else {
                 const auto tmp = std::visit(GetTensor{}, m_sub_expressions[i]);
-                broadcast_chunks(tmp.m_data, new_data, tmp.size(), width);
+                broadcast_chunks(tmp.m_data.get(), new_data.get(), tmp.size(), width);
             }
 
             for (size_t j=dim_i_previous; j < dim_i; ++j) width *= preparatory.dimensions[j].size();
         }
 
-        broadcast(m_modifier, new_data, preparatory.size);
+        broadcast(m_modifier, new_data.get(), preparatory.size);
 
         // Set up the tensor at the end in case we're doing an assignment
         tensor.m_dimensions = preparatory.dimensions;
         tensor.m_size = preparatory.size;
-
-        deallocate(tensor.m_data);
-        tensor.m_data = new_data;
+        tensor.m_data.swap(new_data);
     };
 
     switch (Preparatory preparatory{m_sub_expressions, PRODUCT}; preparatory.state) {
     case SCALAR:
-        deallocate(tensor.m_data);
         tensor.populate_scalar(m_modifier, true);
         break;
     case FREE_MULTIPLICATION:
