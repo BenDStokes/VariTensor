@@ -8,11 +8,10 @@
 #define VARITENSOR_DENY_H
 
 #ifndef VARITENSOR_VALIDATION_ON
-
 #define VARITENSOR_VALIDATION_ON 1
-#include <stdexcept>
-
 #endif
+
+#include <stdexcept>
 
 namespace varitensor {
 

@@ -192,7 +192,9 @@ struct TransposedAdd final: TestSet::Test {
 
 struct TestTensorAddition final : TestSet {
     explicit TestTensorAddition() : TestSet("Test Addition Operations") {
+#if VARITENSOR_VALIDATION_ON
         add_sub_test(std::make_unique<DisagreementThrows>());
+#endif
         add_sub_test(std::make_unique<VectorAddition>());
         add_sub_test(std::make_unique<VectorSubtraction>());
         add_sub_test(std::make_unique<LinearInversion>());

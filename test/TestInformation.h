@@ -160,8 +160,8 @@ struct IntervalNaming final: TestSet::Test {
     }
 };
 
-struct ContractionIteration final: TestSet::Test {
-    explicit ContractionIteration() : Test("Contraction Iteration") {}
+struct ContractionIterationThrows final: TestSet::Test {
+    explicit ContractionIterationThrows() : Test("Contraction Iteration") {}
 
     bool run_test() override {
         const Index i{LATIN}, j{LATIN}, k{LATIN};
@@ -212,7 +212,9 @@ struct TestInformation final: TestSet {
         add_sub_test(std::make_unique<HasIndex>());
         add_sub_test(std::make_unique<IndexPosition>());
         add_sub_test(std::make_unique<IntervalNaming>());
-        add_sub_test(std::make_unique<ContractionIteration>());
+#if VARITENSOR_VALIDATION_ON
+        add_sub_test(std::make_unique<ContractionIterationThrows>());
+#endif
         add_sub_test(std::make_unique<PrettyPrint>());
     }
 };

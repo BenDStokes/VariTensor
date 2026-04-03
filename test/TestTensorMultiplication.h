@@ -181,7 +181,9 @@ struct TestTensorMultiplication final: TestSet {
         add_sub_test(std::make_unique<tm_tests::TwoDTimesTwoDFree>());
         add_sub_test(std::make_unique<tm_tests::SingleRepeated>());
         add_sub_test(std::make_unique<tm_tests::Mixed>());
+#if VARITENSOR_VALIDATION_ON
         add_sub_test(std::make_unique<tm_tests::DivThrows>());
+#endif
         add_sub_test(std::make_unique<tm_tests::MultiplyDot>());
     }
 };

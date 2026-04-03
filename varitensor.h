@@ -16,16 +16,14 @@
 #include <numeric>
 #include <ranges>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <variant>
 #include <vector>
 
 #ifndef VARITENSOR_VALIDATION_ON
-
 #define VARITENSOR_VALIDATION_ON 1
-#include <stdexcept>
-
 #endif
 
 namespace varitensor {

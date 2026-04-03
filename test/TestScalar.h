@@ -14,9 +14,9 @@ struct StaticCast final : TestSet::Test
     }
 };
 
-struct NonScalarCastException final : TestSet::Test
+struct NonScalarCastThrows final : TestSet::Test
 {
-    explicit NonScalarCastException() : Test("Non-Scalar Cast Exception") {}
+    explicit NonScalarCastThrows() : Test("Non-Scalar Cast Exception") {}
     bool run_test() override
     {
         const Index index{LATIN};
@@ -130,7 +130,9 @@ struct TensorDivision final : TestSet::Test
 struct TestScalar final : TestSet {
     explicit TestScalar() : TestSet("Test Scalars") {
         add_sub_test(std::make_unique<StaticCast>());
-        add_sub_test(std::make_unique<NonScalarCastException>());
+#if VARITENSOR_VALIDATION_ON
+        add_sub_test(std::make_unique<NonScalarCastThrows>());
+#endif
         add_sub_test(std::make_unique<DoubleAddition>());
         add_sub_test(std::make_unique<TensorAddition>());
         add_sub_test(std::make_unique<DoubleSubtraction>());

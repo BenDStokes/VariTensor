@@ -138,8 +138,8 @@ struct DoubleScalarAssignment final : TestSet::Test {
     }
 };
 
-struct DoubleTensorAssignment final : TestSet::Test {
-    explicit DoubleTensorAssignment() : Test("Double-Tensor Throws") {}
+struct DoubleTensorAssignmentThrows final : TestSet::Test {
+    explicit DoubleTensorAssignmentThrows() : Test("Double-Tensor Throws") {}
     bool run_test() override {
         // given
         const Index index{LATIN};
@@ -166,7 +166,9 @@ struct TestAssignmentOperations final : TestSet {
         add_sub_test(std::make_unique<DivisionAssignment>());
         add_sub_test(std::make_unique<ExpressionAssignment>());
         add_sub_test(std::make_unique<DoubleScalarAssignment>());
-        add_sub_test(std::make_unique<DoubleTensorAssignment>());
+#if VARITENSOR_VALIDATION_ON
+        add_sub_test(std::make_unique<DoubleTensorAssignmentThrows>());
+#endif
     }
 };
 

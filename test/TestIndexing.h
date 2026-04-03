@@ -287,8 +287,8 @@ struct MultipleIntervals final: TestSet::Test {
     }
 };
 
-struct BadInterval final: TestSet::Test {
-    explicit BadInterval(): Test("Bad Intervals") {}
+struct BadIntervalThrows final: TestSet::Test {
+    explicit BadIntervalThrows(): Test("Bad Intervals") {}
 
     bool run_test() override {
         const Index i{LATIN};
@@ -321,7 +321,11 @@ struct BadInterval final: TestSet::Test {
 
 struct TestIndexing final: TestSet {
     explicit TestIndexing(): TestSet("Test Indexing") {
+#if VARITENSOR_VALIDATION_ON
         add_sub_test(std::make_unique<local::DisagreementThrows>());
+        add_sub_test(std::make_unique<ExcessiveContractionThrows>());
+        add_sub_test(std::make_unique<BadIntervalThrows>());
+#endif
         add_sub_test(std::make_unique<AllStatic>());
         add_sub_test(std::make_unique<AllFree>());
         add_sub_test(std::make_unique<IndexReduction>());
@@ -329,13 +333,11 @@ struct TestIndexing final: TestSet {
         add_sub_test(std::make_unique<ReducingContraction>());
         add_sub_test(std::make_unique<DoubleContraction>());
         add_sub_test(std::make_unique<ComplexExpression>());
-        add_sub_test(std::make_unique<ExcessiveContractionThrows>());
         add_sub_test(std::make_unique<SplitContraction>());
         add_sub_test(std::make_unique<ScalarShortCircuit>());
         add_sub_test(std::make_unique<SliceAssignment>());
         add_sub_test(std::make_unique<SimpleInterval>());
         add_sub_test(std::make_unique<MultipleIntervals>());
-        add_sub_test(std::make_unique<BadInterval>());
     }
 };
 
