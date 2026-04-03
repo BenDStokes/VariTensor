@@ -5,7 +5,7 @@
  */
 
 #include "varitensor/impl/deny.h"
-#include "varitensor/impl/pre_defined.h"
+#include "../../include/varitensor/pre_defined.h"
 #include "varitensor/Tensor.h"
 
 namespace varitensor {

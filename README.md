@@ -215,6 +215,7 @@ for (auto iter=T.begin(), end=T.end(); iter!=end; ++iter) {
 }
 
 // Pre-defined mathematical symbols
+#include "varitensor/pre_defined.h"
 varitensor::kronecker_delta(...);
 varitensor::levi_civita_symbol(...);
 

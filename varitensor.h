@@ -329,7 +329,9 @@ public:
         for (size_t i = 0; i < m_dimensions.size(); ++i) {
             if (m_dimensions[i].index == index) return m_positions[i];
         }
-        throw TensorLogicError("Unable to find index!");
+        throw TensorLogicError(
+            "Unable to find index!"
+        );  // can't use deny() as there is nothing to return
     }
 
     [[nodiscard]] const Dimensions& dimensions() const {return m_dimensions;}
@@ -1417,7 +1419,8 @@ inline void Preparatory::prepare_linked_operation(const Expressions& sub_express
                 return;
             }
         }
-        throw TensorLogicError("Cannot add or subtract tensors with un-pairable indices");
+        deny(true, // this is always an error, but go through deny() for consistency
+            "Cannot add or subtract tensors with un-pairable indices");
     };
 
     auto assume_aligned = [this, &find_index, &index_matching_function](
@@ -2200,7 +2203,9 @@ inline double& Tensor::operator[](const std::vector<int>& indices) const {
             return dimension.variance;
         }
     }
-    throw TensorLogicError("Missing index when finding variance!");
+    throw TensorLogicError(
+        "Missing index when finding variance!"
+    ); // can't use deny() as there is nothing to return
 }
 
 [[nodiscard]] inline Variance Tensor::variance(const int index) const {
@@ -2218,7 +2223,9 @@ inline double& Tensor::operator[](const std::vector<int>& indices) const {
             return i;
         }
     }
-    throw TensorLogicError("Missing index when finding index position");
+    throw TensorLogicError(
+        "Missing index when finding index position"
+    ); // can't use deny() as there is nothing to return
 }
 
 [[nodiscard]] inline const Index& Tensor::indices(const int index) const {
@@ -2284,7 +2291,9 @@ inline Tensor& Tensor::relabel(const Index& old_index, const Index& new_index) {
             return *this;
         }
     }
-    throw TensorLogicError("Cannot find index to relabel!");
+    throw TensorLogicError(
+        "Cannot find index to relabel!"
+    ); // can't use deny() as there is nothing to return
 }
 
 inline Tensor& Tensor::set_variance(const Index& index, const Variance variance) {
@@ -2294,7 +2303,9 @@ inline Tensor& Tensor::set_variance(const Index& index, const Variance variance)
             return *this;
         }
     }
-    throw TensorLogicError("Cannot find index!");
+    throw TensorLogicError(
+        "Cannot find index!"
+    ); // can't use deny() as there is nothing to return
 }
 
 inline Tensor& Tensor::raise(const Index& index) {

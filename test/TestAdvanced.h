@@ -5,6 +5,7 @@
 
 #include "TestSet.h"
 #include "varitensor/Tensor.h"
+#include "varitensor/pre_defined.h"
 
 namespace advanced_tests {
 

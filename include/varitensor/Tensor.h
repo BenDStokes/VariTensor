@@ -20,9 +20,6 @@
 #include "impl/ProductOp.h"
 #include "impl/View.h"
 
-// Not used here, but we want users who include this file to get the pre-defined tensors as well
-#include "impl/pre_defined.h" // NOLINT
-
 namespace varitensor {
 namespace impl {
 

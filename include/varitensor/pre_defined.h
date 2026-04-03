@@ -7,7 +7,7 @@
 #ifndef VARITENSOR_PRE_DEFINED_H
 #define VARITENSOR_PRE_DEFINED_H
 
-#include "common.h"
+#include "impl/common.h"
 
 namespace varitensor {
 

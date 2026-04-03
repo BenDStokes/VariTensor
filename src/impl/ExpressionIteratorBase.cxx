@@ -28,7 +28,9 @@ int ExpressionIteratorBase::positions(const Index& index) const {
     for (size_t i = 0; i < m_dimensions.size(); ++i) {
         if (m_dimensions[i].index == index) return m_positions[i];
     }
-    throw TensorLogicError("Unable to find index!");
+    throw TensorLogicError(
+        "Unable to find index!"
+    ); // can't use deny() as there is nothing to return
 }
 
 const Dimensions& ExpressionIteratorBase::dimensions() const {

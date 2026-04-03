@@ -269,7 +269,9 @@ double& Tensor::operator[](const std::vector<int>& indices) const {
             return dimension.variance;
         }
     }
-    throw TensorLogicError("Missing index when finding variance!");
+    throw TensorLogicError(
+        "Missing index when finding variance!"
+    ); // can't use deny() as there is nothing to return
 }
 
 [[nodiscard]] Variance Tensor::variance(const int index) const {
@@ -287,7 +289,9 @@ double& Tensor::operator[](const std::vector<int>& indices) const {
             return i;
         }
     }
-    throw TensorLogicError("Missing index when finding index position");
+    throw TensorLogicError(
+        "Missing index when finding index position"
+    ); // can't use deny() as there is nothing to return
 }
 
 [[nodiscard]] const Index& Tensor::indices(const int index) const {
@@ -361,7 +365,9 @@ Tensor& Tensor::relabel(const Index& old_index, const Index& new_index) {
             return *this;
         }
     }
-    throw TensorLogicError("Cannot find index to relabel!");
+    throw TensorLogicError(
+        "Cannot find index to relabel!"
+    ); // can't use deny() as there is nothing to return
 }
 
 Tensor& Tensor::set_variance(const Index& index, const Variance variance) {
@@ -371,7 +377,9 @@ Tensor& Tensor::set_variance(const Index& index, const Variance variance) {
             return *this;
         }
     }
-    throw TensorLogicError("Cannot find index!");
+    throw TensorLogicError(
+        "Cannot find index!"
+    ); // can't use deny() as there is nothing to return
 }
 
 Tensor& Tensor::raise(const Index& index) {

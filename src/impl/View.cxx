@@ -101,7 +101,7 @@ View::const_iterator View::begin() const {
     return const_iterator{&m_target, m_data_ptr, m_dimensions};
 }
 
- View::const_iterator View::end() const {
+View::const_iterator View::end() const {
     return const_iterator{&m_target, nullptr, {}};
 }
 

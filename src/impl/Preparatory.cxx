@@ -79,7 +79,8 @@ void Preparatory::prepare_linked_operation(const Expressions& sub_expressions) {
                 return;
             }
         }
-        throw TensorLogicError("Cannot add or subtract tensors with un-pairable indices");
+        deny(true, // this is always an error, but go through deny() for consistency
+            "Cannot add or subtract tensors with un-pairable indices");
     };
 
     auto assume_aligned = [this, &find_index, &index_matching_function](
